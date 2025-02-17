@@ -3,9 +3,13 @@ import speech_recognition as sr
 import json
 from datetime import datetime
 from schema import reponse_format
+import os
 
-OPENAI_API_KEY = "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"
-openai.api_key = OPENAI_API_KEY
+# Get API key from Heroku environment variable
+openai.api_key = os.getenv("OPENAI_API_KEY")
+
+if openai.api_key is None:
+    raise ValueError("❌ OPENAI_API_KEY is not set. Make sure to add it to Heroku.")
 
 
 AVAILABLE_CATEGORIES = [
