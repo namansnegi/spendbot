@@ -1,0 +1,8 @@
+flask
+pandas
+gunicorn
+requests
+speechrecognition
+openai
+collections
+pyaudio
