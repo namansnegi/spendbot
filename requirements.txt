@@ -4,5 +4,4 @@ gunicorn
 requests
 speechrecognition
 openai
-collections
 pyaudio
