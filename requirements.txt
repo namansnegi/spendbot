@@ -4,4 +4,4 @@ gunicorn
 requests
 speechrecognition
 openai
-pyaudio
+sounddevice
