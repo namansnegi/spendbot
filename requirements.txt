@@ -5,3 +5,4 @@ requests
 speechrecognition
 openai
 sounddevice
+pyaudio
