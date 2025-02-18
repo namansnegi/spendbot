@@ -1,9 +1,11 @@
 from flask import Flask, render_template, request, jsonify
 import pandas as pd
 from datetime import datetime
-from utils import extract_filters, record_and_transcribe
+from utils import extract_filters, record_and_transcribe,transcribe
 import os
 from collections import OrderedDict
+UPLOAD_FOLDER = "uploads"
+os.makedirs(UPLOAD_FOLDER, exist_ok=True)
 
 
 app = Flask(__name__)
@@ -33,6 +35,30 @@ def process_audio():
         extracted_info_ordered = {col: extracted_info.get(col, None) for col in column_order}
         return jsonify(extracted_info_ordered)
     return jsonify({"error": "Could not transcribe audio"})
+
+@app.route('/upload_audio', methods=['POST'])
+def upload_audio():
+    """Receives uploaded audio file, saves it, and transcribes it."""
+    if "audio" not in request.files:
+        return jsonify({"error": "No audio file found"}), 400
+
+    audio_file = request.files["audio"]
+    file_path = os.path.join(UPLOAD_FOLDER, "recorded_audio.wav")
+    audio_file.save(file_path)
+
+    try:
+        transcription = transcribe(file_path)
+        extracted_info = extract_filters(transcription)
+        extracted_info["User_Message"] = transcription
+
+        column_order = ["User_Message", "time_frame", "start_date", "end_date", 
+                        "category", "sub_category", "transaction_type", "beneficiares",
+                        "math_operation", "amount"]
+        extracted_info_ordered = {col: extracted_info.get(col, None) for col in column_order}
+        
+        return jsonify(extracted_info_ordered)
+    except Exception as e:
+        return jsonify({"error": f"Error transcribing audio: {e}"}), 500
 
 if __name__ == '__main__':
     app.run(debug=True)

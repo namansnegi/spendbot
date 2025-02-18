@@ -215,3 +215,17 @@ async def is_transaction_query_openai(user_input):
     
     return "yes" in ai_response 
 
+def transcribe(audio_file_path):
+    try:
+        # Use OpenAI Whisper API to transcribe
+        with open(audio_file_path, "rb") as audio_file:
+            transcription = openai.audio.transcriptions.create(
+                model="whisper-1",
+                file=audio_file,
+                response_format="text"
+            )
+            print(f"📝 Transcribed Text: {transcription}")
+            return transcription
+    except Exception as e:
+        print(f"❌ Error transcribing audio: {e}")
+        return None

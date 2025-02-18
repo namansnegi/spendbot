@@ -93,6 +93,7 @@
             <div class="col-md-6 text-center">
                 <label class="form-label">Or use voice input:</label>
                 <button class="btn btn-danger" onclick="processAudio()">🎤 Record & Process Audio</button>
+                <canvas id="visualizer" width="300" height="50" style="background: #ddd; border-radius: 5px;"></canvas>
             </div>
         </div>
     
@@ -136,15 +137,15 @@
             });
         }
 
-        function processAudio() {
-            showLoader();
-            fetch('/process_audio', { method: 'POST' })
-            .then(response => response.json())
-            .then(data => {
-                hideLoader();
-                displayResults(data);
-            });
-        }
+        // function processAudio() {
+        //     showLoader();
+        //     fetch('/process_audio', { method: 'POST' })
+        //     .then(response => response.json())
+        //     .then(data => {
+        //         hideLoader();
+        //         displayResults(data);
+        //     });
+        // }
 
         function displayResults(data) {
             let resultsBody = document.getElementById('results-body');
@@ -158,6 +159,100 @@
                 resultsBody.innerHTML += row;
             });
         }
+        let mediaRecorder;
+        let audioChunks = [];
+        let audioContext;
+        let analyser;
+        let canvas;
+        let canvasContext;
+        let animationFrameId;
+        let noiseFilter;
+
+        async function processAudio() {
+            const stream = await navigator.mediaDevices.getUserMedia({
+                audio: {
+                    noiseSuppression: true, // Enable built-in noise suppression
+                    echoCancellation: true,
+                    autoGainControl: true
+                }
+            });
+
+            mediaRecorder = new MediaRecorder(stream);
+            audioChunks = [];
+
+            showLoader();
+            startVisualizer(stream);  // Start the visualizer with noise reduction
+
+            mediaRecorder.ondataavailable = event => {
+                audioChunks.push(event.data);
+            };
+
+            mediaRecorder.onstop = async () => {
+                stopVisualizer();
+                const audioBlob = new Blob(audioChunks, { type: "audio/wav" });
+                const formData = new FormData();
+                formData.append("audio", audioBlob, "recorded_audio.wav");
+
+                const response = await fetch("/upload_audio", { method: "POST", body: formData });
+                const result = await response.json();
+                hideLoader();
+                displayResults(result);
+            };
+
+            mediaRecorder.start();
+            setTimeout(() => mediaRecorder.stop(), 5000);
+        }
+
+        function startVisualizer(stream) {
+            audioContext = new (window.AudioContext || window.webkitAudioContext)();
+            analyser = audioContext.createAnalyser();
+            const source = audioContext.createMediaStreamSource(stream);
+
+            // Create a Low-Pass Filter to reduce high-frequency noise
+            noiseFilter = audioContext.createBiquadFilter();
+            noiseFilter.type = "lowpass";
+            noiseFilter.frequency.setValueAtTime(1000, audioContext.currentTime); // 1kHz cutoff
+
+            // Connect nodes
+            source.connect(noiseFilter);
+            noiseFilter.connect(analyser);
+
+            analyser.fftSize = 256;
+
+            canvas = document.getElementById("visualizer");
+            canvasContext = canvas.getContext("2d");
+
+            function draw() {
+                canvasContext.clearRect(0, 0, canvas.width, canvas.height);
+                const bufferLength = analyser.frequencyBinCount;
+                const dataArray = new Uint8Array(bufferLength);
+                analyser.getByteFrequencyData(dataArray);
+
+                canvasContext.fillStyle = "#007bff";
+                const barWidth = (canvas.width / bufferLength) * 2;
+                let x = 0;
+
+                for (let i = 0; i < bufferLength; i++) {
+                    const barHeight = dataArray[i] / 5;
+                    canvasContext.fillRect(x, canvas.height - barHeight, barWidth, barHeight);
+                    x += barWidth + 1;
+                }
+
+                animationFrameId = requestAnimationFrame(draw);
+            }
+
+            draw();
+        }
+
+        function stopVisualizer() {
+            cancelAnimationFrame(animationFrameId);
+            if (audioContext) {
+                audioContext.close();
+            }
+        }
+
+
+
 
     </script>
 
