@@ -1,5 +1,7 @@
 portaudio19-dev
 alsa-utils
 alsa-oss
-libasound2
+libasound2t64
 libasound2-plugins
+libfftw3-bin
+libfftw3-dev
