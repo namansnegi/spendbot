@@ -21,19 +21,20 @@ def process_text():
     user_text = request.form['user_text']
     extracted_info = extract_filters(user_text)
     extracted_info["User_Message"] = user_text
-    column_order = ["User_Message", "time_frame", "start_date", "end_date", "category", "sub_category", "transaction_type","beneficiares","math_operation", "amount"]
+    print(extracted_info)
+    column_order = ["User_Message", "time_frame", "start_date", "end_date", "category", "sub_category", "transaction_type","beneficiaries","math_operation", "amount"]
     extracted_info_ordered = OrderedDict((col, extracted_info.get(col, None)) for col in column_order)
 
-    return jsonify(dict(extracted_info_ordered))
+    return jsonify(dict(extracted_info))
 @app.route('/process_audio', methods=['POST'])
 def process_audio():
-    column_order = ["User_Message", "time_frame", "start_date", "end_date", "category", "sub_category", "transaction_type","beneficiares","math_operation", "amount"]
+    column_order = ["User_Message", "time_frame", "start_date", "end_date", "category", "sub_category", "transaction_type","beneficiaries","math_operation", "amount"]
     user_text = record_and_transcribe()
     if user_text:
         extracted_info = extract_filters(user_text)
         extracted_info["User_Message"] = user_text
         extracted_info_ordered = {col: extracted_info.get(col, None) for col in column_order}
-        return jsonify(extracted_info_ordered)
+        return jsonify(extracted_info)
     return jsonify({"error": "Could not transcribe audio"})
 
 @app.route('/upload_audio', methods=['POST'])
@@ -56,7 +57,7 @@ def upload_audio():
                         "math_operation", "amount"]
         extracted_info_ordered = {col: extracted_info.get(col, None) for col in column_order}
         
-        return jsonify(extracted_info_ordered)
+        return jsonify(extracted_info)
     except Exception as e:
         return jsonify({"error": f"Error transcribing audio: {e}"}), 500
 

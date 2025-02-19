@@ -78,6 +78,21 @@
             0% { transform: rotate(0deg); }
             100% { transform: rotate(360deg); }
         }
+        .confidence-high {
+            color: green;
+            font-weight: bold;
+        }
+        .confidence-low {
+            color: red;
+            font-weight: bold;
+        }
+        .clarifications {
+            background-color: #fff3cd;
+            border-left: 5px solid #ffc107;
+            padding: 10px;
+            margin-bottom: 15px;
+            font-size: 14px;
+        }
     </style>
 </head>
 <body>
@@ -98,6 +113,7 @@
         </div>
     
         <div class="loader" id="loader"></div>
+        <div id="clarifications"></div>
     
         <h4>Results:</h4>
         <div id="results">
@@ -149,9 +165,17 @@
 
         function displayResults(data) {
             let resultsBody = document.getElementById('results-body');
-            resultsBody.innerHTML = ""; // Clear previous results
-            
+            let clarificationsDiv = document.getElementById('clarifications');
+            resultsBody.innerHTML = "";
+            clarificationsDiv.innerHTML = ""; 
+
+            if (data.clarification_needed && data.clarification_needed.length > 0) {
+                clarificationsDiv.innerHTML = `<div class="clarifications"><strong>Clarifications Needed:</strong> ${data.clarification_needed.join(" ")}</div>`;
+            }
             Object.entries(data).forEach(([key, value]) => {
+                if (key === "confidence_scores" || key === "clarification_needed") return;
+
+
                 let row = `<tr>
                             <td><strong>${key}</strong></td>
                             <td style='word-break: break-word;'>${value || "N/A"}</td>
