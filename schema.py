@@ -17,9 +17,13 @@ reponse_format = {
       "type": "string",
       "description": "The most relevant transaction category from the predefined list."
     },
+    "pfm-category": {
+      "type": "string",
+      "description": "The most relevant pfm category from the predefined list."
+    },
     "sub_category": {
       "type": "string",
-      "description": "A more specific sub-category of the transaction from the predefined list."
+      "description": "A more specific sub-category of the transaction."
     },
     "transaction_type": {
       "type": "string",
@@ -57,6 +61,11 @@ reponse_format = {
       "type": "array",
       "items": { "type": "string" },
       "description": "List of questions for the user when ambiguities are detected in the query (e.g., 'Does PMU refer to a beneficiary or just a location?')."
+    },
+    "clarification_options": {
+      "type": "array",
+      "items": { "type": "string" },
+      "description": "Two clarification choices the user can select from when clarification is needed."
     }
   },
   "required": [
@@ -64,14 +73,15 @@ reponse_format = {
     "start_date",
     "end_date",
     "category",
+    "pfm-category",
     "sub_category",
     "transaction_type",
     "beneficiaries",
     "math_operation",
     "amount",
     "confidence_scores",
-    "clarification_needed"
+    "clarification_needed",
+    "clarification_options"
   ],
   "additionalProperties": False
 }
-
