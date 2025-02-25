@@ -1,1 +1,15 @@
-# spendbot
+# spendbot	MovementTypeFee               string = "fee"
+	MovementTypeATM               string = "atm"
+	MovementTypeDebit             string = "debit"
+	MovementTypeDonation          string = "donation"
+	MovementTypeGiftCards         string = "gift_card"
+	MovementTypeInvestment        string = "investment"
+	MovementTypeLydiaLoan         string = "lydia_loan"
+	MovementTypeLydiaWithContacts string = "lydia_with_contacts"
+	MovementTypePayment           string = "payment"
+	MovementTypeUserGain          string = "user_gain"
+	MovementTypeBankTransfer      string = "bank_transfer"
+	MovementTypeSavings           string = "savings"
+	MovementTypeCardTopUp         string = "card_top_up"
+	MovementTypeBonus             string = "bonus"
+

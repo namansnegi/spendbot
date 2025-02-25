@@ -1,13 +1,10 @@
 from flask import Flask, render_template, request, jsonify
-from utils import extract_filters,transcribe
-import os
-UPLOAD_FOLDER = "uploads"
-os.makedirs(UPLOAD_FOLDER, exist_ok=True)
+from utils import extract_filters, record_and_transcribe, fetch_history, generate_elastic_query
+from data_analysis import  analyze_transactions_with_openai
 
 
 app = Flask(__name__)
 
-# Load test messages (if needed)
 
 @app.route('/')
 def index():
@@ -18,25 +15,64 @@ def process_text():
     user_text = request.form['user_text']
     extracted_info = extract_filters(user_text)
     extracted_info["User_Message"] = user_text
-    return jsonify(dict(extracted_info))
+    # Generate query & fetch history
+    payload = generate_elastic_query(extracted_info)
+    history = fetch_history(payload)
 
-@app.route('/upload_audio', methods=['POST'])
-def upload_audio():
-    """Receives uploaded audio file, saves it, and transcribes it."""
-    if "audio" not in request.files:
-        return jsonify({"error": "No audio file found"}), 400
 
-    audio_file = request.files["audio"]
-    file_path = os.path.join(UPLOAD_FOLDER, "recorded_audio.wav")
-    audio_file.save(file_path)
+    # Perform AI Analysis
+    analysis_results = analyze_transactions_with_openai(history)
+    print("Query:", payload)
 
-    try:
-        transcription = transcribe(file_path)
-        extracted_info = extract_filters(transcription)
-        extracted_info["User_Message"] = transcription
-        return jsonify(extracted_info)
-    except Exception as e:
-        return jsonify({"error": f"Error transcribing audio: {e}"}), 500
+    # Return results with AI insights
+    return jsonify({
+        "clarification_needed": extracted_info.get("clarification_needed", []),
+        "clarification_options": extracted_info.get("clarification_options", []),
+        "items": history.get("items", []),
+        "analysis": analysis_results,  # Pass AI-generated financial insights
+        "filters": {
+            "start_date": extracted_info.get("start_date", ""),
+            "end_date": extracted_info.get("end_date", ""),
+            "amount": extracted_info.get("amount", ""),
+            "category": extracted_info.get("category", ""),
+            "pfm_category": extracted_info.get("pfm-category", ""),
+            "transaction_type": extracted_info.get("transaction_type", ""),
+            "keywords": extracted_info.get("keywords", "")
+        }
+    })
+
+
+
+@app.route('/process_audio', methods=['POST'])
+def process_audio():
+    user_text = record_and_transcribe()
+    if user_text:
+        extracted_info = extract_filters(user_text)
+        extracted_info["User_Message"] = user_text
+        print(extracted_info)
+        payload = generate_elastic_query(extracted_info)
+        history = fetch_history(payload)
+
+        # Perform AI Analysis
+        analysis_results = analyze_transactions_with_openai(history)
+        print("Query:", payload)
+
+        # Return results with AI insights
+        return jsonify({
+            "clarification_needed": extracted_info.get("clarification_needed", []),
+            "clarification_options": extracted_info.get("clarification_options", []),
+            "items": history.get("items", []),
+            "analysis": analysis_results,  # Pass AI-generated financial insights
+            "filters": {
+                "start_date": extracted_info.get("start_date", ""),
+                "end_date": extracted_info.get("end_date", ""),
+                "amount": extracted_info.get("amount", ""),
+                "category": extracted_info.get("category", ""),
+                "pfm_category": extracted_info.get("pfm-category", ""),
+                "transaction_type": extracted_info.get("transaction_type", ""),
+                "keywords": extracted_info.get("keywords", "")
+            }
+        })
 
 if __name__ == '__main__':
     app.run(debug=True)

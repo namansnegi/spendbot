@@ -1,8 +1,9 @@
 AVAILABLE_CATEGORIES = [
     "Rechargement par carte", "Compte courant rémunéré", "Virements", "Paiements",
     "Prélèvements", "Investissement Sumeria", "Prêts Sumeria", "Livret d'épargne",
-    "Gains Sumeria", "Dons", "Cartes cadeaux", "Retraits distributeurs", "Frais"
+    "Gains Sumeria", "Dons", "Cartes cadeaux", "Retraits distributeurs", "Frais","Lydia avec mes contacts"
 ]
+
 TRANSACTION_TYPES = ["Entrées d'argent", "Sorties d'argent", "Inter-comptes"]
 
 PFM_CATEGORIES = [

@@ -42,6 +42,10 @@ reponse_format = {
       "type": ["string", "null"],
       "description": "The extracted amount from the user query, including comparison operators if present (e.g., '>50€', '<100€', '=200€'), or null if not mentioned."
     },
+    "keywords": {
+      "type": ["string", "null"],
+      "description": "The extracted keywords from the user query."
+    },
     "confidence_scores": {
       "type": "object",
       "properties": {
@@ -79,6 +83,7 @@ reponse_format = {
     "beneficiaries",
     "math_operation",
     "amount",
+    "keywords",
     "confidence_scores",
     "clarification_needed",
     "clarification_options"
