@@ -7,6 +7,7 @@ import requests
 import os
 import pandas as pd
 import re
+from constants import AVAILABLE_CATEGORIES, TRANSACTION_TYPES, MOUVEMENT_TYPES, PFM_CATEGORIES
 
 
 openai.api_key = os.getenv("OPENAI_API_KEY")
@@ -14,108 +15,6 @@ openai.api_key = os.getenv("OPENAI_API_KEY")
 if openai.api_key is None:
     raise ValueError("❌ OPENAI_API_KEY is not set. Make sure to add it to Heroku.")
 
-
-AVAILABLE_CATEGORIES = [
-    "Rechargement par carte", "Compte courant rémunéré", "Virements", "Paiements",
-    "Prélèvements", "Investissement Sumeria", "Prêts Sumeria", "Livret d'épargne",
-    "Gains Sumeria", "Dons", "Cartes cadeaux", "Retraits distributeurs", "Frais"
-]
-TRANSACTION_TYPES = ["Entrées d'argent", "Sorties d'argent", "Inter-comptes"]
-
-pfm_categories = [
-    "atm",
-    "auto_insurance",
-    "bakeries",
-    "neutral_for_information",
-    "benefits",
-    "betting",
-    "bio_markets",
-    "cafes_bars",
-    "car_rental",
-    "car_wash_repair",
-    "children_care",
-    "clothing",
-    "commodities",
-    "commuting",
-    "credit_conso",
-    "cosmetics",
-    "opera_theatre_concerts_standup_museum_cinema",
-    "dating",
-    "debt_collection",
-    "diy",
-    "education_degrees",
-    "electronics_it_stores",
-    "entertainment",
-    "fintechs",
-    "fintechs_suspicious",
-    "food_delivery",
-    "food_retail",
-    "18_plus",
-    "furniture",
-    "gaming",
-    "gifts",
-    "give",
-    "hairdresser",
-    "hard_bank_fees",
-    "hardest_bank_fees",
-    "health_insurance",
-    "insurance",
-    "internal",
-    "jewelry",
-    "laundromat_pressing",
-    "leasing",
-    "legal_finance",
-    "loans",
-    "marketplace",
-    "medical",
-    "misc",
-    "multimedia",
-    "newspapers_magasines",
-    "new_means_of_transportation",
-    "online_courses",
-    "optical_hearing",
-    "other_income",
-    "other_passive_activities",
-    "others_housing",
-    "parking",
-    "pet_stuff",
-    "pharmacies",
-    "phone_internet_plan",
-    "photography_art",
-    "playful_culture",
-    "prepaid_cards",
-    "professional_expenses",
-    "refund",
-    "rent",
-    "restaurants",
-    "retro_bank_fees",
-    "salary_revenues",
-    "savings_investments",
-    "security",
-    "self_care",
-    "mailing_printing_delivery",
-    "shopping_center",
-    "snacking",
-    "soft_bank_fees",
-    "software",
-    "sports_activities",
-    "sports_equipment",
-    "supermarkets",
-    "tabac_presse",
-    "taxes",
-    "taxis",
-    "tolls_gas_stations",
-    "trading",
-    "travel_accomodation",
-    "travelling_platforms",
-    "travel_means",
-    "uncategorizable",
-    "vpns",
-    "transportation",
-    "online_content",
-    "groceries",
-    "restaurants_bars_cafes"
-]
 
 
 # Function to extract filters using OpenAI
@@ -136,12 +35,12 @@ def extract_filters(user_input):
         - Certain words in French can refer to **either a spending category or a specific merchant**. **Your job is to resolve these cases intelligently or request clarification if necessary.**  
 
         ### Given Data:
-        - **Transaction Categories:**  
-        {AVAILABLE_CATEGORIES}
-        - **Transaction Types:**  
+        - **Movement Type:**  
+        {MOUVEMENT_TYPES}
+        - **Movement Scope:**  
         {TRANSACTION_TYPES}
         - **PFM Categories:**
-        {pfm_categories}
+        {PFM_CATEGORIES}
         ---
 
         ### **Your Task:**
@@ -149,11 +48,11 @@ def extract_filters(user_input):
 
         - **`time_frame`**: Identify the relevant time period (e.g., "last month", "this year", "this week").
         - **`start_date` & `end_date`**: Convert the identified time frame into **YYYY-MM-DD** format.
-        - **`category`**: Choose the **most relevant** category from the given list. There can be more than one category
+        - **`movement_type`**: Choose the **most relevant** category from the given list. There can be more than one category
         - **`pfm_category`**: Choose all the **most relevant** PFM category from the given list. Can have more than one category.
         - **`sub_category`**: Extract a **detailed sub-category** that better explains the user intent. Should be in french  
         *(e.g., "drinks" → "bars & cafés", "grec" → "restaurant")*.
-        - **`transaction_type`**: Choose the **most relevant** transaction type from the given list. There can be more than one transaction type
+        - **`movement_scope`**: Choose the **most relevant** transaction type from the given list. There can be more than one transaction type
         - **`beneficiaries`**: Identify the beneficiary (if explicitly mentioned).  
         - **If a word could be BOTH a sub-category and a beneficiary, ask for clarification.**  
         - **Example:**  
@@ -162,7 +61,7 @@ def extract_filters(user_input):
 
         - **`amount`**: Extract any numerical amount mentioned (e.g., `">50€"`, `"<100€"`).
         - **`math_operation`**: Identify the mathematical operation implied by the query (e.g., "total spent" → `SUM`, "highest expense" → `MAX`).
-        - **`keywords`**: Extract any relevant keywords that could help filter transactions.
+        - **`keywords`**: Extract any relevant keywords that could help filter transactions. There can be more than one keyword.
           -Extract **ONLY specific and relevant terms** as keywords that can be matched in transaction records.
             - **DO NOT return generic words** like "dépenses", "transactions", "paiements".
             - **DO extract** keywords that indicate a merchant, category, or user-provided label.
@@ -189,6 +88,10 @@ def extract_filters(user_input):
 
                 **User Input:** `"2025 dépenses"`
                 **Keywords:** `[]` ❌ (NO keywords should be extracted)
+
+                **User Input:** `"Mes transactions en 2025 pour tabac au supermarche plus de 10 euros"`
+                **Keywords:** `[tabac,supermarché]` ✅ (NOT "transactions", NOT "2025", NOT "10 euros")
+
         - **`confidence_scores`**: Assign a **confidence score (0 to 1)** for each extracted value.
         - **`clarification_needed`**: If ambiguity is detected, **ask for clarification instead of making an uncertain assumption**.
         - **`clarification_options`**: If a clarification is needed, provide **two possible choices** the user can select from.
@@ -232,14 +135,11 @@ def extract_filters(user_input):
             - *"J’ai filé 50 balles à Thomas"* → **Personal payment, likely a money transfer**
             - *"J’ai tout cramé à la FNAC"* → **Shopping, likely books/electronics**
 
-- **If unsure, ask the user for clarification.**
+        - **If unsure, ask the user for clarification.**
 
-        ### **Return Format:**
         Return a **JSON object** with the extracted values.
 
         ---
-
-        ### **Example Responses**
 
         #### **Example 1**
         **User Input:** `"Show my payments at PMU last month over 50€."`
@@ -248,19 +148,19 @@ def extract_filters(user_input):
             "time_frame": "last month",
             "start_date": "2024-01-01",
             "end_date": "2024-01-31",
-            "category": "Paiements",
+            "movement_type": "Paiements",
             "pfm_category": "cafes_bars",
             "sub_category": "Drinks",
-            "transaction_type": "Sorties d'argent",
+            "movement_scope": "Sorties d'argent",
             "beneficiaries": "PMU",
             "math_operation": "NULL",
             "amount": ">50€",
             "keywords": "PMU",
             "confidence_scores": {{
                 "time_frame": 1.0,
-                "category": 0.9,
+                "movement_type": 0.9,
                 "sub_category": 1.0,
-                "transaction_type": 0.95,
+                "movement_scope": 0.95,
                 "beneficiaries": 0.3,
                 "amount": 0.2
             }},
@@ -274,19 +174,19 @@ def extract_filters(user_input):
                 "time_frame": "this week",
                 "start_date": "2025-02-10",
                 "end_date": "2025-02-17",
-                "category": "Retraits distributeurs",
+                "movement_type": "Retraits distributeurs",
                 "pfm_category": "atm",
                 "sub_category": NULL,
-                "transaction_type": "Sorties d'argent",
+                "movement_scope": "Sorties d'argent",
                 "beneficiares": NULL,
                 "math_operation": NULL,
                 "amount": ">100€",
                 "keywords": "",
                 "confidence_scores": {{
                 "time_frame": 1.0,
-                "category": 0.9,
+                "movement_type": 0.9,
                 "sub_category": 1.0,
-                "transaction_type": 0.95,
+                "movement_scope": 0.95,
                 "beneficiary": 0.3,
                 "amount": 0.2
                 }},
@@ -302,19 +202,19 @@ def extract_filters(user_input):
                 "time_frame": "last month",
                 "start_date": "2025-01-01",
                 "end_date": "2025-01-31",
-                "category": "Paiements",
+                "movement_type": "Paiements",
                 "pfm_category": "restaurants",
                 "sub_category": "Nourriture et boissons",
-                "transaction_type": "Sorties d'argent",
+                "movement_scope": "Sorties d'argent",
                 "beneficiares": NULL,
                 "math_operation": NULL,
                 "amount": "NULL",
                 "keywords": "nourriture","boissons",
                 "confidence_scores": {{
                 "time_frame": 1.0,
-                "category": 0.9,
+                "movement_type": 0.9,
                 "sub_category": 1.0,
-                "transaction_type": 0.95,
+                "movement_scope": 0.95,
                 "beneficiary": 0.3,
                 "amount": 0.2
                 }},
@@ -328,19 +228,19 @@ def extract_filters(user_input):
                 "time_frame": "last month",
                 "start_date": "2025-01-01",
                 "end_date": "2025-01-31",
-                "category": "Paiements",
+                "movement_type": "Paiements",
                 "pfm_category": "cafes_bars",
                 "sub_category": "Nourriture et boissons",
-                "transaction_type": "Sorties d'argent",
+                "movement_scope": "Sorties d'argent",
                 "beneficiares": Baoina,
                 "math_operation": NULL,
                 "amount": "NULL",
                 "keywords": "Baoina",
                 "confidence_scores": {{
                 "time_frame": 1.0,
-                "category": 0.9,
+                "movement_type": 0.9,
                 "sub_category": 1.0,
-                "transaction_type": 0.95,
+                "movement_scope": 0.95,
                 "beneficiary": 0.3,
                 "amount": 0.2
                 }},
@@ -499,14 +399,7 @@ def clean_amount(amount_str):
 
     return operator, value
 def generate_elastic_query(transaction_data):
-    """
-    Converts extracted transaction details into an ElasticSearch Query with multiple multi_match queries.
 
-    :param transaction_data: Extracted transaction filter dictionary
-    :return: JSON query for ElasticSearch
-    """
-
-    # Helper function to check if a field is valid (not NULL, not empty)
     def is_valid(value):
         return value and value != "NULL"
 
@@ -645,3 +538,45 @@ def format_transaction_data(transaction_data):
 
     df = pd.DataFrame(rows)
     return df
+def create_advanced_search_url(base_url, filters):
+
+    url = f"{base_url}?advanced_search"
+    movement_scope_map = {
+        "Entrées d'argent": "debit",
+        "Sorties d'argent": "credit",
+        "Inter-comptes": "inter"
+    }
+
+    movement_scope = movement_scope_map.get(filters["movement_scope"], None)
+
+    # Add filters to the URL
+    if 'start_date' in filters and filters['start_date']:
+        url += f"&date_after={filters['start_date']}T00:00:00Z"
+    if 'end_date' in filters and filters['end_date']:
+        url += f"&date_before={filters['end_date']}T23:59:59Z"
+
+    # Handle amount filters
+    if 'amount' in filters and filters['amount']:
+        operator, value = clean_amount(filters['amount'])
+        if operator and value is not None:
+            url += f"&amount={int(value * 100)}"
+            if operator == ">":
+                q_operator = "gte"
+            elif operator == "<":
+                q_operator = "lte"
+            elif operator == "=":
+                q_operator = "eq"
+               
+            url += f"&amount_equal={q_operator}"
+            url += f"&amount_approximate={str(filters.get('amount_approximate', True)).lower()}"
+
+    if 'movement_type' in filters and filters['movement_type'] and filters['movement_type'] != "NULL":
+        url += f"&movement_type={filters['movement_type']}"
+    if 'movement_scope' in filters and filters['movement_scope'] and filters['movement_scope'] != "NULL":
+        url += f"&movement_scope={movement_scope}"
+    if 'keywords' in filters and filters['keywords'] and filters['keywords'] != "NULL":
+        url += f"&q={filters['keywords'].replace(' ', '%20').replace(',', '%20')}"
+    if 'pfm_category' in filters and filters['pfm_category'] and filters['pfm_category'] != "NULL":
+        url += f"&movement_scope={filters['pfm_category']}"
+
+    return url

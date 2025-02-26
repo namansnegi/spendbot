@@ -1,5 +1,5 @@
 from flask import Flask, render_template, request, jsonify
-from utils import extract_filters, record_and_transcribe, fetch_history, generate_elastic_query
+from utils import extract_filters, record_and_transcribe, fetch_history, generate_elastic_query, create_advanced_search_url
 from data_analysis import  analyze_transactions_with_openai
 
 
@@ -16,31 +16,36 @@ def process_text():
     extracted_info = extract_filters(user_text)
     extracted_info["User_Message"] = user_text
     # Generate query & fetch history
-    payload = generate_elastic_query(extracted_info)
-    history = fetch_history(payload)
+    # payload = generate_elastic_query(extracted_info)
+    # history = fetch_history(payload)
 
 
     # Perform AI Analysis
-    analysis_results = analyze_transactions_with_openai(history)
-    print("Query:", payload)
+    # analysis_results = analyze_transactions_with_openai(history)
+    android_url = "lydia://advanced_search"
+    ios_url = "com.lydia-app.preprod://advanced_search"
+
+    query_url_android = create_advanced_search_url(android_url, extracted_info)
+    query_url_ios = create_advanced_search_url(ios_url, extracted_info)
 
     # Return results with AI insights
     return jsonify({
         "clarification_needed": extracted_info.get("clarification_needed", []),
         "clarification_options": extracted_info.get("clarification_options", []),
-        "items": history.get("items", []),
-        "analysis": analysis_results,  # Pass AI-generated financial insights
+        # "items": history.get("items", []),
+        # "analysis": analysis_results,  # Pass AI-generated financial insights
         "filters": {
             "start_date": extracted_info.get("start_date", ""),
             "end_date": extracted_info.get("end_date", ""),
             "amount": extracted_info.get("amount", ""),
-            "category": extracted_info.get("category", ""),
+            "movement_type": extracted_info.get("movement_type", ""),
             "pfm_category": extracted_info.get("pfm-category", ""),
-            "transaction_type": extracted_info.get("transaction_type", ""),
+            "movement_scope": extracted_info.get("movement_scope", ""),
             "keywords": extracted_info.get("keywords", "")
-        }
+        },
+        "query_url_android": query_url_android,
+        "query_url_ios": query_url_ios
     })
-
 
 
 @app.route('/process_audio', methods=['POST'])
@@ -49,29 +54,32 @@ def process_audio():
     if user_text:
         extracted_info = extract_filters(user_text)
         extracted_info["User_Message"] = user_text
-        print(extracted_info)
-        payload = generate_elastic_query(extracted_info)
-        history = fetch_history(payload)
+        # payload = generate_elastic_query(extracted_info)
+        # history = fetch_history(payload)
+        # analysis_results = analyze_transactions_with_openai(history)
+        android_url = "lydia://advanced_search"
+        ios_url = "com.lydia-app.preprod://advanced_search"
 
-        # Perform AI Analysis
-        analysis_results = analyze_transactions_with_openai(history)
-        print("Query:", payload)
-
+        query_url_android = create_advanced_search_url(android_url, extracted_info)
+        query_url_ios = create_advanced_search_url(ios_url, extracted_info)
+      
         # Return results with AI insights
         return jsonify({
             "clarification_needed": extracted_info.get("clarification_needed", []),
             "clarification_options": extracted_info.get("clarification_options", []),
-            "items": history.get("items", []),
-            "analysis": analysis_results,  # Pass AI-generated financial insights
+            # "items": history.get("items", []),
+            # "analysis": analysis_results,  # Pass AI-generated financial insights
             "filters": {
                 "start_date": extracted_info.get("start_date", ""),
                 "end_date": extracted_info.get("end_date", ""),
                 "amount": extracted_info.get("amount", ""),
-                "category": extracted_info.get("category", ""),
+                "movement_type": extracted_info.get("movement_type", ""),
                 "pfm_category": extracted_info.get("pfm-category", ""),
-                "transaction_type": extracted_info.get("transaction_type", ""),
+                "movement_scope": extracted_info.get("movement_scope", ""),
                 "keywords": extracted_info.get("keywords", "")
-            }
+            },
+        "query_url_android": query_url_android,
+        "query_url_ios": query_url_ios
         })
 
 if __name__ == '__main__':

@@ -3,6 +3,22 @@ AVAILABLE_CATEGORIES = [
     "Prélèvements", "Investissement Sumeria", "Prêts Sumeria", "Livret d'épargne",
     "Gains Sumeria", "Dons", "Cartes cadeaux", "Retraits distributeurs", "Frais","Lydia avec mes contacts"
 ]
+MOUVEMENT_TYPES = [
+    "card_top_up",
+    "fee",
+    "atm",
+    "debit",
+    "donation",
+    "gift_card",
+    "investment",
+    "lydia_loan",
+    "lydia_with_contacts",
+    "payment",
+    "user_gain",
+    "bank_transfer",
+    "savings",
+    "bonus"
+]
 
 TRANSACTION_TYPES = ["Entrées d'argent", "Sorties d'argent", "Inter-comptes"]
 

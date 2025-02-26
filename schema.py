@@ -13,7 +13,7 @@ reponse_format = {
       "type": "string",
       "description": "The end date of the time period in YYYY-MM-DD format."
     },
-    "category": {
+    "movement_type": {
       "type": "string",
       "description": "The most relevant transaction category from the predefined list."
     },
@@ -25,7 +25,7 @@ reponse_format = {
       "type": "string",
       "description": "A more specific sub-category of the transaction."
     },
-    "transaction_type": {
+    "movement_scope": {
       "type": "string",
       "description": "The most relevant transaction type from the predefined list."
     },
@@ -76,10 +76,10 @@ reponse_format = {
     "time_frame",
     "start_date",
     "end_date",
-    "category",
+    "movement_type",
     "pfm-category",
     "sub_category",
-    "transaction_type",
+    "movement_scope",
     "beneficiaries",
     "math_operation",
     "amount",

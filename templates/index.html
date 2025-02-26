@@ -100,6 +100,15 @@
             animation: spin 1s linear infinite;
             margin: auto;
         }
+        .url-container {
+            margin-top: 20px;
+        }
+        .url-label {
+            font-weight: bold;
+        }
+        .url-display {
+            word-break: break-all;
+        }
         @keyframes spin {
             0% { transform: rotate(0deg); }
             100% { transform: rotate(360deg); }
@@ -132,7 +141,9 @@
         </div>
 
         <!-- Autofilled Filters -->
+        
         <div class="row mt-4">
+            <h1 style = "color: #1b85b8">Extracted Info</h1>
             <div class="col-md-4">
                 <label>Start Date</label>
                 <input type="text" id="start-date" class="form-control" readonly>
@@ -165,8 +176,19 @@
             </div>
         </div>
 
+        
+        <div class="url-container">
+            <h1 style = "color: #1b85b8">Generated Advanced Search URLs</h1>
+            <div class="url-label">Android URL:</div>
+            <div class="url-display" id="android-url"></div>
+        </div>
+        <div class="url-container">
+            <div class="url-label">iOS URL:</div>
+            <div class="url-display" id="ios-url"></div>
+        </div>
+
         <!-- Transaction History Table -->
-        <h4 class="mt-4">Transaction History</h4>
+        <!-- <h4 class="mt-4">Transaction History</h4>
         <div class="table-container">
             <table>
                 <thead>
@@ -176,7 +198,7 @@
                         <th>Title</th>
                         <th>Receiver</th>
                         <th>Payer</th>
-                        <th>Category</th>
+                        <th>PFM Category</th>
                         <th>Status</th>
                     </tr>
                 </thead>
@@ -184,7 +206,7 @@
                     <tr><td colspan='10' class='text-center'>No transactions found.</td></tr>
                 </tbody>
             </table>
-        </div>
+        </div> -->
     </div>
 
     <script>
@@ -193,48 +215,52 @@
 
         function displayResults(data) {
             // Show the analysis section
-            const analysisSection = document.getElementById('analysis-section');
-            analysisSection.style.display = 'flex';
+            // const analysisSection = document.getElementById('analysis-section');
+            // analysisSection.style.display = 'flex';
 
-            // Split the analysis text into points
-            const analysisPoints = data.analysis.split('\n').filter(line => line.trim() !== '');
+            // // Split the analysis text into points
+            // const analysisPoints = data.analysis.split('\n').filter(line => line.trim() !== '');
 
             // Assign each point to a box
-            if (document.getElementById('analysis-box-1')) document.getElementById('analysis-box-1').innerHTML = marked.parse(analysisPoints[0] || '');
-            if (document.getElementById('analysis-box-2')) document.getElementById('analysis-box-2').innerHTML = marked.parse(analysisPoints[1] || '');
-            if (document.getElementById('analysis-box-3')) document.getElementById('analysis-box-3').innerHTML = marked.parse(analysisPoints[2] || '');
+            // if (document.getElementById('analysis-box-1')) document.getElementById('analysis-box-1').innerHTML = marked.parse(analysisPoints[0] || '');
+            // if (document.getElementById('analysis-box-2')) document.getElementById('analysis-box-2').innerHTML = marked.parse(analysisPoints[1] || '');
+            // if (document.getElementById('analysis-box-3')) document.getElementById('analysis-box-3').innerHTML = marked.parse(analysisPoints[2] || '');
+
 
             // Update filters with extracted info
             if (document.getElementById('start-date')) document.getElementById('start-date').value = data.filters.start_date || '';
             if (document.getElementById('end-date')) document.getElementById('end-date').value = data.filters.end_date || '';
             if (document.getElementById('amount')) document.getElementById('amount').value = data.filters.amount || '';
-            if (document.getElementById('category')) document.getElementById('category').value = data.filters.category || '';
+            if (document.getElementById('category')) document.getElementById('category').value = data.filters.movement_type || '';
             if (document.getElementById('pfm-category')) document.getElementById('pfm-category').value = data.filters.pfm_category || '';
-            if (document.getElementById('transaction-type')) document.getElementById('transaction-type').value = data.filters.transaction_type || '';
+            if (document.getElementById('transaction-type')) document.getElementById('transaction-type').value = data.filters.movement_scope || '';
             if (document.getElementById('keywords')) document.getElementById('keywords').value = data.filters.keywords || '';
 
-            // Update transaction history table
-            const resultsBody = document.getElementById('results-body');
-            resultsBody.innerHTML = ''; // Clear existing rows
-            if (data.items.length > 0) {
-                data.items.forEach(item => {
-                    const row = document.createElement('tr');
-                    let amountClass = item.amount < 0 ? "text-danger" : "text-success";
-                    let formattedDate = item.created_at ? new Date(item.created_at).toLocaleDateString("fr-FR") : "N/A";
-                    row.innerHTML = `
-                        <td>${formattedDate}</td>
-                        <td style="color: ${item.amount < 0 ? '#ff8b94' : '#68c4af'}; font-weight: bold;"><strong>${item.amount.toFixed(2)}€</strong></td>
-                        <td>${item.title || "N/A"}</td>
-                        <td>${item.receiver?.name || "N/A"}</td>
-                        <td>${item.payer?.name || "N/A"}</td>
-                        <td>${item.pfm_category || "N/A"}</td>
-                        <td>${item.status || "N/A"}</td>
-                    `;
-                    resultsBody.appendChild(row);
-                });
-            } else {
-                resultsBody.innerHTML = '<tr><td colspan="10" class="text-center">No transactions found.</td></tr>';
-            }
+            document.getElementById('android-url').innerText = data.query_url_android;
+            document.getElementById('ios-url').innerText = data.query_url_ios;
+
+            // // Update transaction history table
+            // const resultsBody = document.getElementById('results-body');
+            // resultsBody.innerHTML = ''; // Clear existing rows
+            // if (data.items.length > 0) {
+            //     data.items.forEach(item => {
+            //         const row = document.createElement('tr');
+            //         let amountClass = item.amount < 0 ? "text-danger" : "text-success";
+            //         let formattedDate = item.created_at ? new Date(item.created_at).toLocaleDateString("fr-FR") : "N/A";
+            //         row.innerHTML = `
+            //             <td>${formattedDate}</td>
+            //             <td style="color: ${item.amount < 0 ? '#ff8b94' : '#68c4af'}; font-weight: bold;"><strong>${item.amount.toFixed(2)}€</strong></td>
+            //             <td>${item.title || "N/A"}</td>
+            //             <td>${item.receiver?.name || "N/A"}</td>
+            //             <td>${item.payer?.name || "N/A"}</td>
+            //             <td>${item.pfm_category || "N/A"}</td>
+            //             <td>${item.status || "N/A"}</td>
+            //         `;
+            //         resultsBody.appendChild(row);
+            //     });
+            // } else {
+            //     resultsBody.innerHTML = '<tr><td colspan="10" class="text-center">No transactions found.</td></tr>';
+            // }
         }
 
         function processText() {
