@@ -278,17 +278,50 @@
             });
         }
 
-        function processAudio() {
-            showLoader();
-            fetch('/process_audio', {
-                method: 'POST'
-            })
-            .then(response => response.json())
-            .then(data => {
-                hideLoader();
-                displayResults(data);
+        // function processAudio() {
+        //     showLoader();
+        //     fetch('/process_audio', {
+        //         method: 'POST'
+        //     })
+        //     .then(response => response.json())
+        //     .then(data => {
+        //         hideLoader();
+        //         displayResults(data);
+        //     });
+        // }
+        async function processAudio() {
+            const stream = await navigator.mediaDevices.getUserMedia({
+                audio: {
+                    noiseSuppression: true, // Enable built-in noise suppression
+                    echoCancellation: true,
+                    autoGainControl: true
+                }
             });
+
+            mediaRecorder = new MediaRecorder(stream);
+            audioChunks = [];
+
+            showLoader();
+
+            mediaRecorder.ondataavailable = event => {
+                audioChunks.push(event.data);
+            };
+
+            mediaRecorder.onstop = async () => {
+                const audioBlob = new Blob(audioChunks, { type: "audio/wav" });
+                const formData = new FormData();
+                formData.append("audio", audioBlob, "recorded_audio.wav");
+
+                const response = await fetch("/upload_audio", { method: "POST", body: formData });
+                const result = await response.json();
+                hideLoader();
+                displayResults(result);
+            };
+
+            mediaRecorder.start();
+            setTimeout(() => mediaRecorder.stop(), 5000);
         }
+
     </script>
 </body>
 </html>

@@ -12,6 +12,7 @@ from constants import AVAILABLE_CATEGORIES, TRANSACTION_TYPES, MOUVEMENT_TYPES, 
 
 openai.api_key = os.getenv("OPENAI_API_KEY")
 
+
 if openai.api_key is None:
     raise ValueError("❌ OPENAI_API_KEY is not set. Make sure to add it to Heroku.")
 

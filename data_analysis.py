@@ -5,6 +5,7 @@ import os
 
 openai.api_key = os.getenv("OPENAI_API_KEY")
 
+
 response_format = {
     "type": "object",
     "properties": {
