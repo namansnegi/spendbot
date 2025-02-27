@@ -7,7 +7,7 @@ import requests
 import os
 import pandas as pd
 import re
-from constants import AVAILABLE_CATEGORIES, TRANSACTION_TYPES, MOUVEMENT_TYPES, PFM_CATEGORIES
+from constants import MOUVEMENT_SCOPES, MOUVEMENT_TYPES, PFM_CATEGORIES
 
 
 openai.api_key = os.getenv("OPENAI_API_KEY")
@@ -33,14 +33,20 @@ def extract_filters(user_input):
 
         - Today’s date is **{today}**. Use this to interpret time-related queries.  
         - The user may inquire about past transactions using **formal French, slang (argot), or casual speech**.  
-        - Certain words in French can refer to **either a spending category or a specific merchant**. **Your job is to resolve these cases intelligently or request clarification if necessary.**  
+        - Certain words in French can refer to **either a spending category or a specific merchant**. **Your job is to resolve these cases intelligently or request clarification if necessary.**
+        - **Avoid extracting generic finance-related terms** like "dépenses", "transactions", "paiements".
+        - **Colloquial expressions & merchant abbreviations should be mapped correctly** (e.g., *McDo → McDonald’s*, *Décat → Decathlon*).
+        - **Refund-related queries should differentiate between actual refunds and bank transfers.**
+        - **Temporal logic should be precise**:
+          - If a month is mentioned but hasn’t arrived yet, **default to the previous year**.
+          - If no date is specified, default to **the last complete month**.
 
         ### Given Data:
-        - **Movement Type:**  
+        - **movement_type:**  
         {MOUVEMENT_TYPES}
-        - **Movement Scope:**  
-        {TRANSACTION_TYPES}
-        - **PFM Categories:**
+        - **movement_scope:**  
+        {MOUVEMENT_SCOPES}
+        - **pfm_category:**
         {PFM_CATEGORIES}
         ---
 
@@ -49,24 +55,46 @@ def extract_filters(user_input):
 
         - **`time_frame`**: Identify the relevant time period (e.g., "last month", "this year", "this week").
         - **`start_date` & `end_date`**: Convert the identified time frame into **YYYY-MM-DD** format.
-        - **`movement_type`**: Choose the **most relevant** category from the given list. There can be more than one category
-        - **`pfm_category`**: Choose all the **most relevant** PFM category from the given list. Can have more than one category.
-        - **`sub_category`**: Extract a **detailed sub-category** that better explains the user intent. Should be in french  
-        *(e.g., "drinks" → "bars & cafés", "grec" → "restaurant")*.
-        - **`movement_scope`**: Choose the **most relevant** transaction type from the given list. There can be more than one transaction type
-        - **`beneficiaries`**: Identify the beneficiary (if explicitly mentioned).  
-        - **If a word could be BOTH a sub-category and a beneficiary, ask for clarification.**  
-        - **Example:**  
-            - *"Combien ai-je dépensé au Grec ?"* → `"grec"` could mean **"restaurant"** (sub-category) or a **specific kebab shop** (beneficiary).  
-            - **Ask:** *"Voulez-vous dire un restaurant grec en général ou un établissement spécifique ?"*
+        - **`movement_type`**: Choose the **most relevant** category from the given list. There can be more than one category. Only select from this list {MOUVEMENT_TYPES}. Dont invent or select from any other list
+            - NEVER infer movement_type from pfm_category values.
+            - If the user mentions a term that exists ONLY in pfm_category (like "remboursement"), DO NOT set movement_type to it.
+            - If the user mentions receiving money (e.g., "j’ai reçu un remboursement"), select:
+                - "user_gain" if it’s personal income.
+                - "bank_transfer" if it’s a known financial transaction.
+            - If the refund is from an external source (e.g., "remboursement de mutuelle" or "remboursement Sécu"), select:
+                - "bank_transfer" (since it's an inbound payment from an institution).
+                - "user_gain" (if it's uncertain).
 
-        - **`amount`**: Extract any numerical amount mentioned (e.g., `">50€"`, `"<100€"`).
-        - **`math_operation`**: Identify the mathematical operation implied by the query (e.g., "total spent" → `SUM`, "highest expense" → `MAX`).
-        - **`keywords`**: Extract any relevant keywords that could help filter transactions. There can be more than one keyword.
+        - **`pfm_category`**: Choose all the **most relevant** PFM category from the given list. Can have more than one category.
+            Choose ALL relevant categories from {PFM_CATEGORIES}.
+            If a transaction logically belongs to multiple categories, return all of them.
+            DO NOT limit to only one category if others apply.
+            Examples of multi-category assignments:
+                "remboursement de mutuelle" → ["refund", "health_insurance"]
+                "remboursement de l’assurance auto" → ["refund", "auto_insurance"]
+                "remboursement sur un voyage annulé" → ["refund", "travel_accomodation"]
+                "remboursement médical" → ["refund", "medical"]
+                "J’ai payé mon abonnement Netflix" → ["online_content", "entertainment"]
+                "J’ai commandé un Uber hier soir" → ["transportation", "taxis"]
+                "J’ai acheté un MacBook à la FNAC" → ["electronics_it_stores", "multimedia"]
+                "J’ai pris un hôtel et un billet de train pour mes vacances" → ["travel_accomodation", "travel_means"]
+                "J’ai acheté une perceuse chez Castorama" → ["diy", "electronics_it_stores"]
+                "J’ai payé mon loyer et mes charges" → ["rent", "others_housing"]
+                "J’ai envoyé de l’argent à un ami sur Lydia" → ["lydia_with_contacts", "bank_transfer"]
+                "J’ai commandé un burger sur Uber Eats" → ["food_delivery", "restaurants"]
+                "J’ai acheté des lunettes chez Afflelou" → ["optical_hearing", "medical"]
+                "J’ai mis de l’essence et payé un péage" → ["tolls_gas_stations", "commuting"]
+                "J’ai acheté des vêtements et des chaussures" → ["clothing", "shopping_center"]
+                "J’ai souscrit à un VPN et un abonnement à un site d’actualités" → ["vpns", "newspapers_magasines"]
+            DO NOT invent categories that are not in {PFM_CATEGORIES}.
+            If multiple categories are applicable, always return them all.
+        - **`movement_scope`**: Choose the **most relevant** movement scope from the given list. There can be more than one movement scope. Only select from this list {MOUVEMENT_SCOPES}.Dont invent or select from any other list
+        - **`amount`**: Extract any numerical amount mentioned (e.g., `">50€"`, `"<100€"`). The is the amount value of money paid or received for a transaction
+        - **`math_operation`**: Identify the mathematical operation implied by the query (e.g., "total spent" → `SUM`, "highest expense" → `MAX`). 
+        - **`keywords`**: Extract only transaction-relevant keywords.
           -Extract **ONLY specific and relevant terms** as keywords that can be matched in transaction records.
             - **DO NOT return generic words** like "dépenses", "transactions", "paiements".
-            - **DO extract** keywords that indicate a merchant, category, or user-provided label.
-            - **DO extract** financial terms from the query that will help filter transactions.
+            - **DO NOT return generic terms** like "bar", "tabac" "supermache" etc. The keywords should be proper nouns(names) and not common nouns.
             - The extracted keywords should be useful when matching fields like:
             - `title`
             - `description`
@@ -84,46 +112,35 @@ def extract_filters(user_input):
                 **User Input:** `"Paiements au PMU la semaine dernière"`
                 **Keywords:** `["PMU"]` ✅ (NOT "paiements", NOT "semaine dernière")
 
-                **User Input:** `"Retrait distributeur janvier"`
-                **Keywords:** `["distributeur"]` ✅ (NOT "retrait", NOT "janvier")
-
                 **User Input:** `"2025 dépenses"`
                 **Keywords:** `[]` ❌ (NO keywords should be extracted)
 
-                **User Input:** `"Mes transactions en 2025 pour tabac au supermarche plus de 10 euros"`
-                **Keywords:** `[tabac,supermarché]` ✅ (NOT "transactions", NOT "2025", NOT "10 euros")
-
-        - **`confidence_scores`**: Assign a **confidence score (0 to 1)** for each extracted value.
-        - **`clarification_needed`**: If ambiguity is detected, **ask for clarification instead of making an uncertain assumption**.
-        - **`clarification_options`**: If a clarification is needed, provide **two possible choices** the user can select from.
-
-
+                **User Input:** `"Mes transactions en 2025 pour tabac au Baiona plus de 10 euros"`
+                **Keywords:** `[Baiona]` ✅ (NOT "transactions", NOT "tabac" NOT "supermarché" NOT "2025", NOT "10 euros")
         ---
+        ### **Handling Merchant Names & Colloquial Expressions**
+        - Maintain a **mapping** of common abbreviations:
+          - *McDo* → *McDonald’s*
+          - *Décat* → *Decathlon*
+          - Sécu → Sécurité sociale
+          - Prime → Amazon Prime
+          - *Tabac* → **Should NOT be extracted as a keyword** (generic term)
 
         ### **Handling Edge Cases:**
-        ### **When a Word Can Be a Category or a Beneficiary**
+        ### **When a Word Can have different pfm_category**
         - Some words refer to **types of businesses** (category) **AND** **specific places** (beneficiary).  
         - **Example:**  
             - *"J’ai claqué au PMU"* → **PMU could be:**
-            - **A betting shop** (merchant)
-            - **A bar visit** (category = "Bars & Cafés")
+            - **A betting shop** (pfm_category = "betting)
+            - **A bar visit** (pfm_category = "cafes_bars")
+            - In this case return all the possible pfm_category and ask for clarification.
             - **Clarify:**  
             *"PMU peut être un lieu de paris ou un simple bar. À quoi faites-vous référence ?"*
-
-        - **Common Cases to Clarify:**
-            - **"Grec"** → Is it a generic kebab shop (sub-category) or a named restaurant (beneficiary)?
-            - **"McDo"** → Is it the global fast-food chain (beneficiary) or just a type of food expense?
-            - **"La boulangerie"** → Is it a category (bakery expenses) or a specific place?
-
-        - **Ambiguous Beneficiaries vs. Sub-categories:**  
-        - If a term can have **multiple meanings**, assess the context to determine its intent.  
-        - Example:  
-            - *"Combien ai-je dépensé au Grec la semaine dernière ?"* → `"grec"` likely refers to `"restaurant"` (sub-category), **not** a specific beneficiary.  
-            - *"How much did I spend at PMU last week?"* → `"PMU"` could be a beneficiary or **just a location** where a transaction happened (e.g., for drinks). **Ask for validation if uncertain.**
 
         - **Implicit Date Ranges:**  
         - `"last week"` → Convert to the appropriate date range.
         - `"January"` → Assume the most recent January unless context suggests otherwise.
+        - Do not return any dates after the present date of {today}
 
         - **Handling Currency & Amounts:**  
         - Extract numerical values along with their operators (`>`, `<`, `=`) and currency if mentioned.
@@ -136,8 +153,6 @@ def extract_filters(user_input):
             - *"J’ai filé 50 balles à Thomas"* → **Personal payment, likely a money transfer**
             - *"J’ai tout cramé à la FNAC"* → **Shopping, likely books/electronics**
 
-        - **If unsure, ask the user for clarification.**
-
         Return a **JSON object** with the extracted values.
 
         ---
@@ -149,24 +164,12 @@ def extract_filters(user_input):
             "time_frame": "last month",
             "start_date": "2024-01-01",
             "end_date": "2024-01-31",
-            "movement_type": "Paiements",
-            "pfm_category": "cafes_bars",
-            "sub_category": "Drinks",
+            "movement_type": "payments",
+            "pfm_category": "cafes_bars, betting",
             "movement_scope": "Sorties d'argent",
-            "beneficiaries": "PMU",
-            "math_operation": "NULL",
+            "math_operation": "",
             "amount": ">50€",
-            "keywords": "PMU",
-            "confidence_scores": {{
-                "time_frame": 1.0,
-                "movement_type": 0.9,
-                "sub_category": 1.0,
-                "movement_scope": 0.95,
-                "beneficiaries": 0.3,
-                "amount": 0.2
-            }},
-            "clarification_needed": ["PMU peut être un lieu de paris ou un simple bar. À quoi faites-vous référence ?"],
-            "clarification_options": ["lieu de paris", "un simple bar"],
+            "keywords": "PMU"
         }}
             **Example 2**
             User Input: "All withdrawals over 100€ this week."
@@ -175,25 +178,12 @@ def extract_filters(user_input):
                 "time_frame": "this week",
                 "start_date": "2025-02-10",
                 "end_date": "2025-02-17",
-                "movement_type": "Retraits distributeurs",
+                "movement_type": "atm",
                 "pfm_category": "atm",
-                "sub_category": NULL,
                 "movement_scope": "Sorties d'argent",
-                "beneficiares": NULL,
-                "math_operation": NULL,
+                "math_operation": "",
                 "amount": ">100€",
-                "keywords": "",
-                "confidence_scores": {{
-                "time_frame": 1.0,
-                "movement_type": 0.9,
-                "sub_category": 1.0,
-                "movement_scope": 0.95,
-                "beneficiary": 0.3,
-                "amount": 0.2
-                }},
-                "clarification_needed": NULL,
-                "clarification_options": ["lieu de paris", "un simple bar"],
-
+                "keywords": ""
             }}
 
             **Example 3**
@@ -203,24 +193,12 @@ def extract_filters(user_input):
                 "time_frame": "last month",
                 "start_date": "2025-01-01",
                 "end_date": "2025-01-31",
-                "movement_type": "Paiements",
+                "movement_type": "payment",
                 "pfm_category": "restaurants",
-                "sub_category": "Nourriture et boissons",
                 "movement_scope": "Sorties d'argent",
-                "beneficiares": NULL,
-                "math_operation": NULL,
-                "amount": "NULL",
-                "keywords": "nourriture","boissons",
-                "confidence_scores": {{
-                "time_frame": 1.0,
-                "movement_type": 0.9,
-                "sub_category": 1.0,
-                "movement_scope": 0.95,
-                "beneficiary": 0.3,
-                "amount": 0.2
-                }},
-                "clarification_needed": NULL,
-                "clarification_options": ["lieu de paris", "un simple bar"],
+                "math_operation": "",
+                "amount": "",
+                "keywords": ""
             }}
             **Example 4**
             User Input: "How much did I spend a Baoina last month."
@@ -229,24 +207,12 @@ def extract_filters(user_input):
                 "time_frame": "last month",
                 "start_date": "2025-01-01",
                 "end_date": "2025-01-31",
-                "movement_type": "Paiements",
-                "pfm_category": "cafes_bars",
-                "sub_category": "Nourriture et boissons",
+                "movement_type": "payment",
+                "pfm_category": "cafes_bars, restaurants",
                 "movement_scope": "Sorties d'argent",
-                "beneficiares": Baoina,
-                "math_operation": NULL,
-                "amount": "NULL",
-                "keywords": "Baoina",
-                "confidence_scores": {{
-                "time_frame": 1.0,
-                "movement_type": 0.9,
-                "sub_category": 1.0,
-                "movement_scope": 0.95,
-                "beneficiary": 0.3,
-                "amount": 0.2
-                }},
-                "clarification_needed": NULL,
-                "clarification_options": ["lieu de paris", "un simple bar"],
+                "math_operation": "",
+                "amount": "",
+                "keywords": "Baoina"
             }}
 
             User Input: "{user_input}"

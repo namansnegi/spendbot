@@ -1,8 +1,3 @@
-AVAILABLE_CATEGORIES = [
-    "Rechargement par carte", "Compte courant rémunéré", "Virements", "Paiements",
-    "Prélèvements", "Investissement Sumeria", "Prêts Sumeria", "Livret d'épargne",
-    "Gains Sumeria", "Dons", "Cartes cadeaux", "Retraits distributeurs", "Frais","Lydia avec mes contacts"
-]
 MOUVEMENT_TYPES = [
     "card_top_up",
     "fee",
@@ -20,7 +15,7 @@ MOUVEMENT_TYPES = [
     "bonus"
 ]
 
-TRANSACTION_TYPES = ["Entrées d'argent", "Sorties d'argent", "Inter-comptes"]
+MOUVEMENT_SCOPES = ["Entrées d'argent", "Sorties d'argent", "Inter-comptes"]
 
 PFM_CATEGORIES = [
     "atm", "auto_insurance", "bakeries", "neutral_for_information", "benefits",

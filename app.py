@@ -17,6 +17,7 @@ def process_text():
     user_text = request.form['user_text']
     extracted_info = extract_filters(user_text)
     extracted_info["User_Message"] = user_text
+    print(extracted_info)
     # Generate query & fetch history
     # payload = generate_elastic_query(extracted_info)
     # history = fetch_history(payload)
@@ -40,6 +41,7 @@ def process_text():
             "start_date": extracted_info.get("start_date", ""),
             "end_date": extracted_info.get("end_date", ""),
             "amount": extracted_info.get("amount", ""),
+            "math": extracted_info.get("math_operation", ""),
             "movement_type": extracted_info.get("movement_type", ""),
             "pfm_category": extracted_info.get("pfm-category", ""),
             "movement_scope": extracted_info.get("movement_scope", ""),
@@ -75,6 +77,7 @@ def process_audio():
                 "start_date": extracted_info.get("start_date", ""),
                 "end_date": extracted_info.get("end_date", ""),
                 "amount": extracted_info.get("amount", ""),
+                "math": extracted_info.get("math_operation", ""),
                 "movement_type": extracted_info.get("movement_type", ""),
                 "pfm_category": extracted_info.get("pfm-category", ""),
                 "movement_scope": extracted_info.get("movement_scope", ""),
@@ -113,6 +116,7 @@ def upload_audio():
                 "start_date": extracted_info.get("start_date", ""),
                 "end_date": extracted_info.get("end_date", ""),
                 "amount": extracted_info.get("amount", ""),
+                "math": extracted_info.get("math_operation", ""),
                 "movement_type": extracted_info.get("movement_type", ""),
                 "pfm_category": extracted_info.get("pfm-category", ""),
                 "movement_scope": extracted_info.get("movement_scope", ""),
