@@ -95,6 +95,9 @@ def extract_filters(user_input):
           -Extract **ONLY specific and relevant terms** as keywords that can be matched in transaction records.
             - **DO NOT return generic words** like "dépenses", "transactions", "paiements".
             - **DO NOT return generic terms** like "bar", "tabac" "supermache" etc. The keywords should be proper nouns(names) and not common nouns.
+            - Keywords should be proper nouns (names of people, businesses, institutions, brands, or cities).
+            - DO NOT extract generic words like "bar du coin," "proprio," "marché local," "duty-free," "garagiste," etc.
+            - Only include proper names of businesses, places, or known entities that can be matched in transaction records.
             - The extracted keywords should be useful when matching fields like:
             - `title`
             - `description`
